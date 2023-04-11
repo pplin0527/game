@@ -98,13 +98,6 @@ class Enemy(Character):
 def deal_damage(target, damage):
     target.take_damage(damage)
 
-
-def display_hand(player):
-    print("\nYour hand:")
-    for i, card in enumerate(player.hand, 1):
-        print(f"{i}. {card.name} (AP: {card.ap}) - {card.info}")
-
-
 def display_available_cards(player):
     print("\nAvailable cards:")
     for i, card in enumerate(player.hand, 1):
@@ -192,7 +185,6 @@ def main():
         player.ap = 3
         player.draw_cards()
 
-        display_hand(player)
         display_status(player, enemy)
 
         player_turn(player, enemy)
