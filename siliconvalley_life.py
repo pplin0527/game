@@ -24,7 +24,7 @@ class AttackCard(Card):
 
 
 class DefenseCard(Card):
-    ## TODO(peiyinglin): Add defense point instead of using take damage.
+    # TODO(peiyinglin): Add defense point instead of using take damage.
     def __init__(self, name, ap, damage, info):
         super().__init__(name, ap, info)
         self.damage = damage
@@ -98,6 +98,7 @@ class Enemy(Character):
 def deal_damage(target, damage):
     target.take_damage(damage)
 
+
 def display_available_cards(player):
     print("\nAvailable cards:")
     for i, card in enumerate(player.hand, 1):
@@ -155,19 +156,23 @@ def player_turn(player, enemy):
 def enemy_turn(player, enemy):
     if enemy.intent == "attack":
         print(f"-----> {enemy.name} attacking")
-        enemy.play_card(Card("Enemy Attack", 0, enemy.attack_value), player)
+        enemy.play_card(AttackCard("Enemy Attack", 0,
+                                   enemy.attack_value, "Enemy Attack"), player)
     elif enemy.intent == "defend":
         print(f"-----> {enemy.name} defending")
-        enemy.play_card(Card("Enemy Defense", 0, -enemy.attack_value), enemy)
+        enemy.play_card(DefenseCard("Enemy Defense", 0, -
+                                    enemy.attack_value, "Enemy Defense"), enemy)
     else:
         print(f"-----> {enemy.name} doing nothing")
 
 
 def main():
     basic_attack = AttackCard("Attack", 1, 6, "Deal 6 damage to the enemy")
-    double_attack = AttackCard("Double Attack", 2, 12, "Deal 12 damage to the enemy")
+    double_attack = AttackCard(
+        "Double Attack", 2, 12, "Deal 12 damage to the enemy")
     basic_defense = DefenseCard("Defense", 1, 5, "Gain 5 defense points")
-    double_defense = DefenseCard("Double Defense", 2, 10, "Gain 10 defense points")
+    double_defense = DefenseCard(
+        "Double Defense", 2, 10, "Gain 10 defense points")
     draw_card = DrawCard("Draw Card", 1, 1, "Draw 1 additional card")
 
     deck = [basic_attack] * 4 + [basic_defense] * 4 + \
