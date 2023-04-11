@@ -83,9 +83,9 @@ def display_status(player, enemy):
 
 def player_turn(player, enemy):
     end_turn = False
+    enemy.choose_intent()
 
     while player.ap > 0 and player.hand and not end_turn:
-        enemy.choose_intent()
         if enemy.intent == "attack":
             print(f"{enemy.name}'s intent: {enemy.intent} for {enemy.attack_value} damage")
         elif enemy.intent == "defend":
