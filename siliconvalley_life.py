@@ -1,11 +1,46 @@
 import random
 
-class Card:
-    def __init__(self, name, ap, damage):
+from abc import ABC, abstractmethod
+
+
+class Card(ABC):
+    def __init__(self, name, ap, info):
         self.name = name
         self.ap = ap
-        # damage to hp; postive: attack, negative: defend
+        self.info = info
+
+    @abstractmethod
+    def play(self, player, target):
+        pass
+
+
+class AttackCard(Card):
+    def __init__(self, name, ap, damage, info):
+        super().__init__(name, ap, info)
         self.damage = damage
+
+    def play(self, player, target):
+        target.take_damage(self.damage)
+
+
+class DefenseCard(Card):
+    # TODO(peiyinglin): Add defense point instead of using take damage.
+    def __init__(self, name, ap, damage, info):
+        super().__init__(name, ap, info)
+        self.damage = damage
+
+    def play(self, player, target):
+        target.take_damage(self.take_damage)
+
+
+class DrawCard(Card):
+    def __init__(self, name, ap, draw_count, info):
+        super().__init__(name, ap, info)
+        self.draw_count = draw_count
+
+    def play(self, player, target=None):
+        player.draw_additional_cards(self.draw_count)
+
 
 class Character:
     def __init__(self, name, max_hp, deck):
@@ -28,7 +63,7 @@ class Character:
                 self.deck = self.used_cards
                 random.shuffle(self.deck)
                 self.used_cards.clear()
- 
+
     def take_damage(self, damage):
         self.current_hp -= damage
         if self.current_hp < 0:
@@ -36,7 +71,7 @@ class Character:
 
     def is_dead(self):
         if self.current_hp == 0:
-           print(f"{self.name} is DEAD")
+            print(f"{self.name} is DEAD")
         return self.current_hp == 0
 
     def play_card(self, card, target):
@@ -44,6 +79,7 @@ class Character:
         self.ap -= card.ap
         self.used_cards.append(card)
         self.hand.remove(card)
+
 
 class Enemy(Character):
     def __init__(self, name, max_hp, attack_value):
@@ -62,17 +98,12 @@ class Enemy(Character):
 def deal_damage(target, damage):
     target.take_damage(damage)
 
-def display_hand(player):
-    print("\nYour hand:")
-    for i, card in enumerate(player.hand, 1):
-        print(f"{i}. {card.name} (AP: {card.ap}, Damage: {card.damage})")
-
 
 def display_available_cards(player):
     print("\nAvailable cards:")
     for i, card in enumerate(player.hand, 1):
         if player.ap >= card.ap:
-            print(f"{i}. {card.name} (AP: {card.ap}, Damage: {card.damage})")
+            print(f"{i}. {card.name} (AP: {card.ap}) - {card.info}")
 
 
 def display_status(player, enemy):
@@ -87,15 +118,18 @@ def player_turn(player, enemy):
 
     while player.ap > 0 and player.hand and not end_turn:
         if enemy.intent == "attack":
-            print(f"{enemy.name}'s intent: {enemy.intent} for {enemy.attack_value} damage")
+            print(
+                f"{enemy.name}'s intent: {enemy.intent} for {enemy.attack_value} damage")
         elif enemy.intent == "defend":
-            print(f"{enemy.name}'s intent: {enemy.intent} for {enemy.attack_value} damage")
+            print(
+                f"{enemy.name}'s intent: {enemy.intent} for {enemy.attack_value} damage")
         else:
             print(f"{enemy.name}'s intent: {enemy.intent}")
 
         display_available_cards(player)
 
-        card_choice = input("Choose a card number to play, or type 'end' to end your turn: ").lower()
+        card_choice = input(
+            "Choose a card number to play, or type 'end' to end your turn: ").lower()
 
         if card_choice == "end":
             end_turn = True
@@ -105,7 +139,8 @@ def player_turn(player, enemy):
             chosen_card = player.hand[int(card_choice) - 1]
 
             if chosen_card.ap > player.ap:
-                print("Cannot use this card. No enough action points. Please enter another card number or 'end'.")
+                print(
+                    "Cannot use this card. No enough action points. Please enter another card number or 'end'.")
             else:
                 if chosen_card.damage > 0:
                     print(f"-----> {player.name} attacking")
@@ -121,21 +156,28 @@ def player_turn(player, enemy):
 def enemy_turn(player, enemy):
     if enemy.intent == "attack":
         print(f"-----> {enemy.name} attacking")
-        enemy.play_card(Card("Enemy Attack", 0, enemy.attack_value), player)
+        enemy.play_card(AttackCard("Enemy Attack", 0,
+                                   enemy.attack_value, "Enemy Attack"), player)
     elif enemy.intent == "defend":
         print(f"-----> {enemy.name} defending")
-        enemy.play_card(Card("Enemy Defense", 0, -enemy.attack_value), enemy)
+        enemy.play_card(DefenseCard("Enemy Defense", 0, -
+                                    enemy.attack_value, "Enemy Defense"), enemy)
     else:
         print(f"-----> {enemy.name} doing nothing")
 
 
 def main():
-    attack = Card("Attack", 1, 6)
-    double_attack = Card("Double Attack", 2, 12)
-    defense = Card("Defense", 1, -5)
-    double_defense = Card("Double Defense", 2, -10)  # Add your desired effect for "Double Defense"
+    basic_attack = AttackCard("Attack", 1, 6, "Deal 6 damage to the enemy")
+    double_attack = AttackCard(
+        "Double Attack", 2, 12, "Deal 12 damage to the enemy")
+    basic_defense = DefenseCard("Defense", 1, 5, "Gain 5 defense points")
+    double_defense = DefenseCard(
+        "Double Defense", 2, 10, "Gain 10 defense points")
+    draw_card = DrawCard("Draw Card", 1, 1, "Draw 1 additional card")
 
-    deck = [attack, attack, attack, attack, double_attack, defense, defense, defense, defense, double_defense]
+    deck = [basic_attack] * 4 + [basic_defense] * 4 + \
+        [double_attack] * 2 + [double_defense] * 2 + [draw_card] * 3
+
     random.shuffle(deck)
 
     player = Character("Player", 50, deck)
@@ -148,7 +190,6 @@ def main():
         player.ap = 3
         player.draw_cards()
 
-        display_hand(player)
         display_status(player, enemy)
 
         player_turn(player, enemy)
