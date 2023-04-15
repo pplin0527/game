@@ -2,9 +2,8 @@
 import random
 from abc import ABC, abstractmethod
 
+
 # Define Card classes
-
-
 class Card(ABC):
     def __init__(self, name, ap, info):
         self.name = name
@@ -51,6 +50,7 @@ class Character:
         self.max_hp = max_hp
         self.current_hp = max_hp
         self.ap = ap
+        self.ap_max = 3
         self.deck = deck if deck else []
         self.max_hand = 5
         self.hand_card = []
@@ -58,12 +58,9 @@ class Character:
         self.defense_point = 0
 
     def take_damage(self, damage):
-        if self.defense_point > 0:
-            damage_after_defense = max(0, damage - self.defense_point)
-            self.defense_point = max(0, self.defense_point - damage)
-            self.current_hp -= damage_after_defense
-        else:
-            self.current_hp -= damage
+        damage_after_defense = max(0, damage - self.defense_point)
+        self.defense_point = max(0, self.defense_point - damage)
+        self.current_hp -= damage_after_defense
 
     def add_defense(self, defense_point):
         self.defense_point += defense_point
@@ -94,6 +91,7 @@ class Enemy(Character):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.ap = 0  # Enemies have 0 action points
+        self.ap_max = 0
         self.max_hand = 1
 
 
@@ -134,7 +132,7 @@ class Game:
         self.player.hand_card.clear()
 
         self.player.draw_additional_cards(self.player.max_hand)
-        self.player.ap = 3
+        self.player.ap = self.player.ap_max
 
         while True:
             self.display_info()
@@ -165,23 +163,20 @@ class Game:
         # Clean up Enemy card. Draw cards for the next round.
         self.enemy.used_card.extend(self.enemy.hand_card)
         self.enemy.hand_card.clear()
-        self.enemy.draw_additional_cards(1)
+
         return self.check_game_status()
-    
 
     def game_loop(self):
-        # First round, Enemy draw the first card to display the intent.
-        self.enemy.draw_additional_cards(1)
-
         while True:
+            self.enemy.draw_additional_cards(1)
             if not self.check_game_status():
                 break
             self.player_turn()
             if not self.check_game_status():
                 break
             self.enemy_turn()
-            
-        
+
+
 def main():
     # Initialize cards
 
