@@ -56,6 +56,9 @@ class Character:
         self.hand_card = []
         self.used_card = []
         self.defense_point = 0
+        self.money = 100
+        self.experience = 0
+        self.skip_turn = False
 
     def take_damage(self, damage):
         damage_after_defense = max(0, damage - self.defense_point)
@@ -93,7 +96,37 @@ class Enemy(Character):
         self.ap = 0  # Enemies have 0 action points
         self.ap_max = 0
         self.max_hand = 1
+        self.cost = 0  # Add cost attribute for all enemies
+        self.special_talent = None  # Add special_talent attribute for all enemies
 
+class SpadeEnemy(Enemy):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.cost = 50
+        self.experience = 10
+
+class DiamondEnemy(Enemy):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.cost = 5
+        self.experience = 5
+        self.special_talent = self.distract
+    
+    def distract(self, target):
+        print(f'{self.name} is chitchatting with {target.name}!')
+        target.skip_turn = True
+
+class HeartEnemy(Enemy):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.cost = 25
+        self.experience = 5
+
+class ClubEnemy(Enemy):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.cost = 100
+        self.experience = 20
 
 class Game:
     def __init__(self):
@@ -157,12 +190,15 @@ class Game:
                     "Invalid input. Please enter a number or type 'END' to end your turn.")
 
     def enemy_turn(self):
-        # Play exsisting hand_card (assuming only 1 card for enemy)
-        self.enemy.hand_card[0].play(self.enemy, self.player)
+        if self.enemy.skip_turn:
+            self.enemy.skip_turn = False
+        else:
+            # Play existing hand_card (assuming only 1 card for enemy)
+            self.enemy.hand_card[0].play(self.enemy, self.player)
 
-        # Clean up Enemy card. Draw cards for the next round.
-        self.enemy.used_card.extend(self.enemy.hand_card)
-        self.enemy.hand_card.clear()
+            # Clean up Enemy card. Draw cards for the next round.
+            self.enemy.used_card.extend(self.enemy.hand_card)
+            self.enemy.hand_card.clear()
 
         return self.check_game_status()
 
@@ -201,7 +237,7 @@ def main():
     # Initialize and run the game
     game = Game()
     game.player = Player("Player", 30, deck=player_deck)
-    game.enemy = Enemy("Enemy", 20, deck=enemy_deck)
+    game.enemy = DiamondEnemy("Diamond Enemy", 20, deck=enemy_deck)
     game.game_loop()
 
 
