@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 
 # Define Card classes
 class Card(ABC):
-    def __init__(self, name, ap, info):
+    def __init__(self, name, ap, info, target_type='ENEMY'):
         self.name = name
         self.ap = ap
         self.info = info
@@ -19,6 +19,7 @@ class AttackCard(Card):
     def __init__(self, name, ap, damage, info):
         super().__init__(name, ap, info)
         self.damage = damage
+        self.target_type = 'ENEMY'
 
     def play(self, player, target):
         target.take_damage(self.damage)
@@ -28,6 +29,7 @@ class DefenseCard(Card):
     def __init__(self, name, ap, defense_point, info):
         super().__init__(name, ap, info)
         self.defense_point = defense_point
+        self.target_type = 'ALLY'
 
     def play(self, player, target):
         player.add_defense(self.defense_point)
@@ -37,6 +39,7 @@ class DrawCard(Card):
     def __init__(self, name, ap, draw_count, info):
         super().__init__(name, ap, info)
         self.draw_count = draw_count
+        self.target_type = 'ALLY'
 
     def play(self, player, target=None):
         player.draw_additional_cards(self.draw_count)
@@ -99,11 +102,13 @@ class Enemy(Character):
         self.cost = 0  # Add cost attribute for all enemies
         self.special_talent = None  # Add special_talent attribute for all enemies
 
+
 class SpadeEnemy(Enemy):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.cost = 50
         self.experience = 10
+
 
 class DiamondEnemy(Enemy):
     def __init__(self, *args, **kwargs):
@@ -111,10 +116,11 @@ class DiamondEnemy(Enemy):
         self.cost = 5
         self.experience = 5
         self.special_talent = self.distract
-    
+
     def distract(self, target):
         print(f'{self.name} is chitchatting with {target.name}!')
         target.skip_turn = True
+
 
 class HeartEnemy(Enemy):
     def __init__(self, *args, **kwargs):
@@ -122,89 +128,131 @@ class HeartEnemy(Enemy):
         self.cost = 25
         self.experience = 5
 
+
 class ClubEnemy(Enemy):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.cost = 100
         self.experience = 20
 
-class Game:
-    def __init__(self):
-        self.player = None
-        self.enemy = None
 
-    def create_characters(self):
-        # Initialize player and enemy characters
-        # The line below is removed since we initialize player and enemy later in the main function
-        # self.player = Player("Player", 30, deck=[Card(...), ...])  # Add player's cards
-        # self.enemy = Enemy("Enemy", 20, deck=[Card(...), ...])  # Add enemy's cards
-        pass
+class Game:
+    def __init__(self, players, enemies):
+        self.players = players
+        self.enemies = enemies
 
     def display_info(self):
         print("\n" + "-" * 30)
-        print(
-            f"Player HP: {self.player.current_hp}. Defense: {self.player.defense_point}")
-        print(
-            f"Enemy HP: {self.enemy.current_hp}. Defense: {self.enemy.defense_point}")
-        print("Enemy Intent:", self.enemy.hand_card[0].info)
+        for i, player in enumerate(self.players):
+            print(
+                f"Player {i + 1} HP: {player.current_hp}. Defense: {player.defense_point}")
+        for i, enemy in enumerate(self.enemies):
+            print(
+                f"Enemy {i + 1} HP: {enemy.current_hp}. Defense: {enemy.defense_point}")
+            print("Enemy Intent:", enemy.hand_card[0].info)
 
     def check_game_status(self):
-        if self.player.current_hp <= 0:
+        if any(player.current_hp <= 0 for player in self.players):
             print("Game Over. You lost.")
             return False
 
-        if self.enemy.current_hp <= 0:
+        if all(enemy.current_hp <= 0 for enemy in self.enemies):
             print("You WIN!!")
             return False
 
         return True
 
     def player_turn(self):
-        # Move remaining cards in hand to used_card
-        self.player.used_card.extend(self.player.hand_card)
-        self.player.hand_card.clear()
+        for player in self.players:
+            print(f"\nIt's {player.name}'s turn!\n")
+            input("Press Enter to continue...")
 
-        self.player.draw_additional_cards(self.player.max_hand)
-        self.player.ap = self.player.ap_max
+            # Move remaining cards in hand to used_card
+            player.used_card.extend(player.hand_card)
+            player.hand_card.clear()
 
-        while True:
-            self.display_info()
-            self.player.display_card_list()
-            print(f"Action Points: {self.player.ap}")
+            # Draw max_hand cards and reset AP to max
+            player.draw_additional_cards(player.max_hand)
+            player.ap = player.ap_max
 
-            user_input = input(
-                "Choose a card to play (by number) or type 'END' to end your turn: ")
-            if user_input.upper() == "END":
-                break
-            try:
-                card_number = int(user_input) - 1
-                if 0 <= card_number < len(self.player.hand_card):
-                    self.player.play_card(
-                        self.player.hand_card[card_number], self.enemy)
-                    if not self.check_game_status():
-                        break
-                else:
-                    print("Invalid card number.")
-            except ValueError:
-                print(
-                    "Invalid input. Please enter a number or type 'END' to end your turn.")
+            while True:
+                self.display_info()
+                player.display_card_list()
+                print(f"Action Points: {player.ap}")
+
+                user_input = input(
+                    "Choose a card to play (by number) or type 'END' to end your turn: ")
+                if user_input.upper() == "END":
+                    break
+
+                try:
+                    card_number = int(user_input) - 1
+                    if 0 <= card_number < len(player.hand_card):
+                        card = player.hand_card[card_number]
+
+                        # If the card is a DefenseCard, target your own team.
+                        if isinstance(card, DefenseCard):
+                            player_numbers = [str(i + 1)
+                                              for i in range(len(self.players))]
+                            target_player = input(
+                                f"Choose a player to target ({', '.join(player_numbers)}): ")
+                            if target_player in player_numbers:
+                                target = self.players[int(target_player) - 1]
+                                player.play_card(card, target)
+                                print(
+                                    f"{card.name} effect: {card.info} on {target.name}!")
+                            else:
+                                print("Invalid player number.")
+                        else:
+                            enemy_numbers = [str(i + 1)
+                                             for i in range(len(self.enemies))]
+                            target_enemy = input(
+                                f"Choose an enemy to target ({', '.join(enemy_numbers)}): ")
+                            if target_enemy in enemy_numbers:
+                                target = self.enemies[int(target_enemy) - 1]
+                                player.play_card(card, target)
+                                print(
+                                    f"{card.name} effect: {card.info} on {target.name}!")
+
+                                # Check if enemy's HP is below 0 and remove from the game if true.
+                                if target.current_hp <= 0:
+                                    print(f"{target.name} has been defeated!")
+                                    self.enemies.remove(target)
+                            else:
+                                print("Invalid enemy number.")
+                    else:
+                        print("Invalid card number.")
+                except ValueError:
+                    print(
+                        "Invalid input. Please enter a number or type 'END' to end your turn.")
 
     def enemy_turn(self):
-        if self.enemy.skip_turn:
-            self.enemy.skip_turn = False
-        else:
-            # Play existing hand_card (assuming only 1 card for enemy)
-            self.enemy.hand_card[0].play(self.enemy, self.player)
+        for enemy in self.enemies:
+            print(f"\nIt's {enemy.name}'s turn!\n")
+            input("Press Enter to continue...")
 
-            # Clean up Enemy card. Draw cards for the next round.
-            self.enemy.used_card.extend(self.enemy.hand_card)
-            self.enemy.hand_card.clear()
+            if enemy.current_hp > 0:
+                card = enemy.hand_card[0]
+                if card.target_type == "ALLY":
+                    target = random.choice(self.enemies)
+                else:
+                    target = random.choice(self.players)
 
-        return self.check_game_status()
+                card.play(enemy, target)
+                print(
+                    f"\n{enemy.name} plays '{card.name}' against {target.name}!")
+                print(f"{card.name} effect: {card.info} on {target.name}!\n")
+
+                # Clean up Enemy card. Draw cards for the next round.
+                enemy.used_card.extend(enemy.hand_card)
+                enemy.hand_card.clear()
+
+                # TODO: Enemy died, remove from the game.
 
     def game_loop(self):
         while True:
-            self.enemy.draw_additional_cards(1)
+            for enemy in self.enemies:
+                enemy.draw_additional_cards(1)
             if not self.check_game_status():
                 break
             self.player_turn()
@@ -217,13 +265,17 @@ def main():
     # Initialize cards
 
     # Player cards
-    basic_attack = AttackCard("Attack", 1, 6, "Deal 6 damage to the enemy")
+    basic_attack = AttackCard(
+        "Attack", 1, 6, "Deal 6 damage to the enemy")
     double_attack = AttackCard(
         "Double Attack", 2, 12, "Deal 12 damage to the enemy")
-    basic_defense = DefenseCard("Defense", 1, 5, "Gain 5 defense points")
+    basic_defense = DefenseCard(
+        "Defense", 1, 5, "Gain 5 defense points")
     double_defense = DefenseCard(
         "Double Defense", 2, 10, "Gain 10 defense points")
-    draw_card = DrawCard("Draw Card", 1, 1, "Draw 1 additional card")
+    draw_card = DrawCard("Draw Card", 0, 1, "Draw 1 additional card")
+    draw_double_card = DrawCard(
+        "Draw 2 Cards", 1, 2, "Draw 2 additional card")
 
     player_deck = [basic_attack, double_attack,
                    basic_defense, double_defense, draw_card]
@@ -231,13 +283,23 @@ def main():
     # Enemy cards
     enemy_attack = AttackCard("Attack", 0, 6, "Deal 6 damage to the player")
     enemy_defense = DefenseCard("Defense", 0, 5, "Gain 5 defense points")
+    enemy_do_nothing = DefenseCard("Do nothing", 0, 0, "Enemy is wondering...")
 
-    enemy_deck = [enemy_attack, enemy_attack, enemy_attack, enemy_defense]
+    enemy_deck = [enemy_attack, enemy_attack,
+                  enemy_attack, enemy_defense, enemy_do_nothing]
+
+    # Initialize players and enemies
+    player1 = Player("Player1", 30, deck=player_deck.copy())
+    player2 = Player("Player2", 30, deck=player_deck.copy())
+
+    diamond_enemy = DiamondEnemy("Diamond Enemy", 20, deck=enemy_deck.copy())
+    spade_enemy = SpadeEnemy("Spade Enemy", 20, deck=enemy_deck.copy())
+
+    players = [player1, player2]
+    enemies = [diamond_enemy, spade_enemy]
 
     # Initialize and run the game
-    game = Game()
-    game.player = Player("Player", 30, deck=player_deck)
-    game.enemy = DiamondEnemy("Diamond Enemy", 20, deck=enemy_deck)
+    game = Game(players, enemies)
     game.game_loop()
 
 
