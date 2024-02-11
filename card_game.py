@@ -1,7 +1,8 @@
 # Import required modules
 import random
 from abc import ABC, abstractmethod
-
+from relic import AttackBoostRelic
+from game_display import clear_screen, display_separator
 
 # Define Card classes
 class Card(ABC):
@@ -22,7 +23,10 @@ class AttackCard(Card):
         self.target_type = 'ENEMY'
 
     def play(self, player, target):
-        target.take_damage(self.damage)
+        # Calculate total damage including player's attack bonus
+        total_damage = self.damage + player.attack
+        target.take_damage(total_damage)
+        print(f"{player.name} deals {total_damage} damage to {target.name} with {self.name}.")
 
 
 class DefenseCard(Card):
@@ -62,6 +66,8 @@ class Character:
         self.money = 100
         self.experience = 0
         self.skip_turn = False
+        self.attack = 0
+        self.relics = []
 
     def take_damage(self, damage):
         damage_after_defense = max(0, damage - self.defense_point)
@@ -85,9 +91,17 @@ class Character:
         else:
             print("Not enough action points to play this card.")
 
+    def add_relic(self, relic):
+        """
+        Add a relic to the character and apply its passive effect if applicable.
+        """
+        self.relics.append(relic)
+        relic.apply_passive_effect(self)
+
 
 class Player(Character):
     def display_card_list(self):
+        display_separator()
         print("Your hand:")
         for i, card in enumerate(self.hand_card, 1):
             print(f"{i}. {card.name} (AP: {card.ap}) - {card.info}")
@@ -135,14 +149,13 @@ class ClubEnemy(Enemy):
         self.cost = 100
         self.experience = 20
 
-
 class Game:
     def __init__(self, players, enemies):
         self.players = players
         self.enemies = enemies
 
     def display_info(self):
-        print("\n" + "-" * 30)
+        display_separator()
         for i, player in enumerate(self.players):
             print(
                 f"Player {i + 1} HP: {player.current_hp}. Defense: {player.defense_point}")
@@ -150,6 +163,13 @@ class Game:
             print(
                 f"Enemy {i + 1} HP: {enemy.current_hp}. Defense: {enemy.defense_point}")
             print("Enemy Intent:", enemy.hand_card[0].info)
+    
+    def display_relics(self, player):
+        display_separator()
+        if player.relics:  # Check if the player has any relics
+            print(f"{player.name} has the following relics and their effects:")
+            for relic in player.relics:
+                print(f"- {relic.name}: {relic.description}")
 
     def check_game_status(self):
         if any(player.current_hp <= 0 for player in self.players):
@@ -164,6 +184,7 @@ class Game:
 
     def player_turn(self):
         for player in self.players:
+            clear_screen()  # Clear the screen at the start of each player's turn
             print(f"\nIt's {player.name}'s turn!\n")
             input("Press Enter to continue...")
 
@@ -177,8 +198,10 @@ class Game:
 
             while True:
                 self.display_info()
+                self.display_relics(player)
                 player.display_card_list()
                 print(f"Action Points: {player.ap}")
+                display_separator()
 
                 user_input = input(
                     "Choose a card to play (by number) or type 'END' to end your turn: ")
@@ -225,6 +248,9 @@ class Game:
                 except ValueError:
                     print(
                         "Invalid input. Please enter a number or type 'END' to end your turn.")
+                
+                user_input = input("Any key to continue...")
+                clear_screen()  # Clear the screen at the start of each player's turn
 
     def enemy_turn(self):
         for enemy in self.enemies:
@@ -291,6 +317,9 @@ def main():
     # Initialize players and enemies
     player1 = Player("Player1", 30, deck=player_deck.copy())
     player2 = Player("Player2", 30, deck=player_deck.copy())
+
+    # Add the AttackBoostRelic to player1
+    player1.add_relic(AttackBoostRelic())
 
     diamond_enemy = DiamondEnemy("Diamond Enemy", 20, deck=enemy_deck.copy())
     spade_enemy = SpadeEnemy("Spade Enemy", 20, deck=enemy_deck.copy())
